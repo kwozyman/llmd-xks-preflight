@@ -9,6 +9,7 @@ import logging
 import os
 import kubernetes
 
+
 class LLMDXKSChecks:
     def __init__(self, **kwargs):
         self.log_level = kwargs.get("log_level", "INFO")
@@ -55,6 +56,32 @@ class LLMDXKSChecks:
             return None
         self.logger.info("Kubernetes connection established")
         return api
+
+    def test_azure_instance_type(self):
+        instance_types = {
+            "Standard_NC24ads_A100_v4": 0,
+            "Standard_ND96asr_v4": 0,
+            "Standard_ND96amsr_A100_v4": 0,
+            "Standard_ND96isr_H100_v5": 0,
+            "Standard_ND96isr_H200_v5": 0,
+        }
+        nodes = self.k8s_api.list_node()
+        for node in nodes.items:
+            labels = node.metadata.labels
+            if "beta.kubernetes.io/instance-type" in labels:
+                try:
+                    instance_types[labels["beta.kubernetes.io/instance-type"]] += 1
+                except KeyError:
+                    # ignore unknown instance types
+                    pass
+        max_instance_type = max(instance_types, key=instance_types.get)
+        if instance_types[max_instance_type] == 0:
+            self.logger.error("No supported instance type found")
+            return False
+        else:
+            self.logger.info(f"At least one supported Azure instance type found")
+            self.logger.debug(f"Instances by type: {instance_types}")
+            return True
 
     def detect_cloud_provider(self):
         clouds = {
