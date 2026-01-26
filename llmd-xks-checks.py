@@ -65,35 +65,36 @@ class LLMDXKSChecks:
         self.logger.info("Kubernetes connection established")
         return api
 
-    def test_azure_instance_type(self):
-        instance_types = {
-            "Standard_NC24ads_A100_v4": 0,
-            "Standard_ND96asr_v4": 0,
-            "Standard_ND96amsr_A100_v4": 0,
-            "Standard_ND96isr_H100_v5": 0,
-            "Standard_ND96isr_H200_v5": 0,
-        }
-        nodes = self.k8s_api.list_node()
-        for node in nodes.items:
-            labels = node.metadata.labels
-            if "beta.kubernetes.io/instance-type" in labels:
-                try:
-                    instance_types[labels["beta.kubernetes.io/instance-type"]] += 1
-                except KeyError:
-                    # ignore unknown instance types
-                    pass
-        max_instance_type = max(instance_types, key=instance_types.get)
-        if instance_types[max_instance_type] == 0:
-            self.logger.error("No supported instance type found")
-            return False
-        else:
-            self.logger.info(f"At least one supported Azure instance type found")
-            self.logger.debug(f"Instances by type: {instance_types}")
-            return True
 
     def test_instance_type(self):
+        def azure_instance_type(self):
+            instance_types = {
+                "Standard_NC24ads_A100_v4": 0,
+                "Standard_ND96asr_v4": 0,
+                "Standard_ND96amsr_A100_v4": 0,
+                "Standard_ND96isr_H100_v5": 0,
+                "Standard_ND96isr_H200_v5": 0,
+            }
+            nodes = self.k8s_api.list_node()
+            for node in nodes.items:
+                labels = node.metadata.labels
+                if "beta.kubernetes.io/instance-type" in labels:
+                    try:
+                        instance_types[labels["beta.kubernetes.io/instance-type"]] += 1
+                    except KeyError:
+                        # ignore unknown instance types
+                        pass
+            max_instance_type = max(instance_types, key=instance_types.get)
+            if instance_types[max_instance_type] == 0:
+                self.logger.error("No supported instance type found")
+                return False
+            else:
+                self.logger.info(f"At least one supported Azure instance type found")
+                self.logger.debug(f"Instances by type: {instance_types}")
+                return True
+
         if self.cloud_provider == "azure":
-            return self.test_azure_instance_type()
+            return azure_instance_type(self)
         else:
             self.logger.error("Unsupported cloud provider")
             return False
