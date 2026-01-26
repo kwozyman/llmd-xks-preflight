@@ -37,9 +37,17 @@ class LLMDXKSChecks:
             self.logger.info(f"Cloud provider specified: {self.cloud_provider}")
 
         self.tests = [
-            ]
+            {
+                "name": "instance_type",
+                "function": self.test_instance_type,
+                "description": "Test if the cluster has at least one supported instance type",
+                "suggested_action": "Provision a cluster with at least one supported instance type",
+                "result": False
+            },
+        ]
 
         self.run(self.tests)
+        self.report()
 
     def _log_init(self):
         logger = logging.getLogger(__name__)
@@ -83,6 +91,13 @@ class LLMDXKSChecks:
             self.logger.debug(f"Instances by type: {instance_types}")
             return True
 
+    def test_instance_type(self):
+        if self.cloud_provider == "azure":
+            return self.test_azure_instance_type()
+        else:
+            self.logger.error("Unsupported cloud provider")
+            return False
+
     def detect_cloud_provider(self):
         clouds = {
             "none": 0,
@@ -99,8 +114,22 @@ class LLMDXKSChecks:
 
     def run(self, tests=[]):
         for test in tests:
-            test()
-        return True
+            if test["function"]():
+                self.logger.debug(f"Test {test['name']} passed")
+                test["result"] = True
+            else:
+                self.logger.error(f"Test {test['name']} failed")
+                test["result"] = False
+        return None
+    
+    def report(self):
+        for test in self.tests:
+            if test["result"]:
+                print(f"Test {test['name']} PASSED")
+            else:
+                print(f"Test {test['name']} FAILED")
+                print(f"    Suggested action: {test['suggested_action']}")
+        return None
 
 def cli_arguments():
     default_config_paths = [
