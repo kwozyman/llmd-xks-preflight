@@ -14,6 +14,8 @@ class LLMDXKSChecks:
         self.log_level = kwargs.get("log_level", "INFO")
         self.logger = self._log_init()
 
+        self.cloud_provider = kwargs.get("cloud_provider", "auto")
+
         self.logger.debug(f"Log level: {self.log_level}")
         self.logger.debug(f"Arguments: {kwargs}")
         self.logger.info("LLMDXKSChecks initialized")
@@ -23,6 +25,15 @@ class LLMDXKSChecks:
         if self.k8s_api is None:
             self.logger.error("Failed to connect to Kubernetes cluster")
             sys.exit(1)
+
+        if self.cloud_provider == "auto":
+            self.cloud_provider = self.detect_cloud_provider()
+            if self.cloud_provider == "none":
+                self.logger.error("Failed to detect cloud provider")
+                sys.exit(2)
+            self.logger.info(f"Cloud provider detected: {self.cloud_provider}")
+        else:
+            self.logger.info(f"Cloud provider specified: {self.cloud_provider}")
 
         self.tests = [
             ]
@@ -44,6 +55,20 @@ class LLMDXKSChecks:
             return None
         self.logger.info("Kubernetes connection established")
         return api
+
+    def detect_cloud_provider(self):
+        clouds = {
+            "none": 0,
+            "azure": 0,
+            "aws": 0
+        }
+        nodes = self.k8s_api.list_node()
+        for node in nodes.items:
+            labels = node.metadata.labels
+            if "kubernetes.azure.com/cluster" in labels:
+                clouds["azure"] += 1
+
+        return max(clouds, key=clouds.get)
 
     def run(self, tests=[]):
         for test in tests:
@@ -84,6 +109,14 @@ def cli_arguments():
         default=None,
         env_var="KUBECONFIG",
         help="Path to the kubeconfig file"
+    )
+
+    parser.add_argument(
+        "-u", "--cloud-provider",
+        choices=["auto", "azure"],
+        default="auto",
+        env_var="LLMD_XKS_CLOUD_PROVIDER",
+        help="Cloud provider to perform checks on (by default, try to auto-detect)"
     )
     
     return parser.parse_args()
