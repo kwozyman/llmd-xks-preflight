@@ -65,7 +65,6 @@ class LLMDXKSChecks:
         self.logger.info("Kubernetes connection established")
         return api
 
-
     def test_instance_type(self):
         def azure_instance_type(self):
             instance_types = {
@@ -89,7 +88,7 @@ class LLMDXKSChecks:
                 self.logger.error("No supported instance type found")
                 return False
             else:
-                self.logger.info(f"At least one supported Azure instance type found")
+                self.logger.info("At least one supported Azure instance type found")
                 self.logger.debug(f"Instances by type: {instance_types}")
                 return True
 
@@ -122,7 +121,7 @@ class LLMDXKSChecks:
                 self.logger.error(f"Test {test['name']} failed")
                 test["result"] = False
         return None
-    
+
     def report(self):
         for test in self.tests:
             if test["result"]:
@@ -132,26 +131,27 @@ class LLMDXKSChecks:
                 print(f"    Suggested action: {test['suggested_action']}")
         return None
 
+
 def cli_arguments():
     default_config_paths = [
         os.path.expanduser("~/.llmd-xks-preflight.conf"),
         os.path.join(os.getcwd(), "llmd-xks-preflight.conf"),
         "/etc/llmd-xks-preflight.conf",
     ]
-    
+
     parser = configargparse.ArgumentParser(
         description="LLMD xKS preflight checks.",
         default_config_files=default_config_paths,
         config_file_parser_class=configargparse.ConfigparserConfigFileParser,
         auto_env_var_prefix="LLMD_XKS_",
     )
-    
+
     parser.add_argument(
         "-c", "--config",
         is_config_file=True,
         help="Path to config file"
     )
-    
+
     parser.add_argument(
         "-l", "--log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
@@ -159,7 +159,7 @@ def cli_arguments():
         env_var="LLMD_XKS_LOG_LEVEL",
         help="Set the log level (default: INFO)"
     )
-    
+
     parser.add_argument(
         "-k", "--kube-config",
         type=str,
@@ -175,12 +175,14 @@ def cli_arguments():
         env_var="LLMD_XKS_CLOUD_PROVIDER",
         help="Cloud provider to perform checks on (by default, try to auto-detect)"
     )
-    
+
     return parser.parse_args()
+
 
 def main():
     args = cli_arguments()
-    llmd_xks_checks = LLMDXKSChecks(**vars(args))
+    LLMDXKSChecks(**vars(args))
+
 
 if __name__ == "__main__":
     sys.exit(main())
