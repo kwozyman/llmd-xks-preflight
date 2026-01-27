@@ -3,11 +3,11 @@
 LLMD xKS preflight checks.
 """
 
-import configargparse
+import configargparse  # pyright: ignore[reportMissingImports]
 import sys
 import logging
 import os
-import kubernetes
+import kubernetes  # pyright: ignore[reportMissingImports]
 
 
 class LLMDXKSChecks:
