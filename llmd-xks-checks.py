@@ -44,6 +44,13 @@ class LLMDXKSChecks:
                 "suggested_action": "Provision a cluster with at least one supported instance type",
                 "result": False
             },
+            {
+                "name": "gpu_availablity",
+                "function": self.test_gpu_availablity,
+                "description": "Test if the cluster has GPU drivers",
+                "suggested_action": "Provision a cluster with at least one supported GPU driver",
+                "result": False
+            },
         ]
 
         self.run(self.tests)
@@ -52,7 +59,9 @@ class LLMDXKSChecks:
     def _log_init(self):
         logger = logging.getLogger(__name__)
         logger.setLevel(self.log_level)
-        logger.addHandler(logging.StreamHandler())
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logger.addHandler(handler)
         return logger
 
     def _k8s_connection(self):
@@ -64,6 +73,40 @@ class LLMDXKSChecks:
             return None
         self.logger.info("Kubernetes connection established")
         return api
+
+    def test_gpu_availablity(self):
+        def nvidia_driver_present(node):
+            if "nvidia.com/gpu" in node.status.allocatable.keys():
+                if int(node.status.allocatable["nvidia.com/gpu"] ) > 0:
+                    return True
+                else:
+                    self.logger.warning(f"No allocatabled NVIDIA GPUs on node {node.metadata.name} - no NVIDIA GPU drivers present")
+                    return False
+            else:
+                self.logger.warning(f"No NVIDIA GPU drivers present on node {node.metadata.name} - no NVIDIA GPU accelerators present")
+                return False
+        
+        accelerators = {
+            "nvidia": 0,
+            "other": 0,
+        }
+        nodes = self.k8s_api.list_node()
+        for node in nodes.items:
+            labels = node.metadata.labels
+            if "nvidia.com/gpu.present" in labels:
+                accelerators["nvidia"] += 1
+                self.logger.info(f"NVIDIA GPU accelerator present on node {node.metadata.name}")
+                if not nvidia_driver_present(node):
+                    return False
+            else:
+                accelerators["other"] += 1
+        if accelerators["other"] == len(nodes.items):
+            self.logger.error("No supported GPU drivers found")
+            return False
+        else:
+            self.logger.info("At least one supported GPU driver found")
+            return True
+            
 
     def test_instance_type(self):
         def azure_instance_type(self):
