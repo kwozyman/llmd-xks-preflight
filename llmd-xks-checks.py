@@ -116,6 +116,7 @@ class LLMDXKSChecks:
                 "Standard_ND96amsr_A100_v4": 0,
                 "Standard_ND96isr_H100_v5": 0,
                 "Standard_ND96isr_H200_v5": 0,
+                "Standard_NC4as_T4_v3": 0,
             }
             nodes = self.k8s_api.list_node()
             for node in nodes.items:
