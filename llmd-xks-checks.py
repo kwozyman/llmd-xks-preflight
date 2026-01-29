@@ -3,9 +3,6 @@
 LLMD xKS preflight checks.
 """
 
-from multiprocessing import allow_connection_pickling
-import pprint
-import re
 import configargparse  # pyright: ignore[reportMissingImports]
 import sys
 import logging
@@ -57,10 +54,18 @@ class LLMDXKSChecks:
             {
                 "name": "crd_certmanager",
                 "function": self.test_crd_certmanager,
-                "description": "Test if the cluster has the cert-manager CRDs",
-                "suggested_action": "Install cert-manager",
+                "description": "test if the cluster has the cert-manager crds",
+                "suggested_action": "install cert-manager",
                 "result": False
-            }
+            },
+            {
+                "name": "crd_sailoperator",
+                "function": self.test_crd_sailoperator,
+                "description": "test if the cluster has the sailoperator crds",
+                "suggested_action": "install sail-operator",
+                "result": False
+            },
+
         ]
 
         self.run(self.tests)
@@ -98,20 +103,6 @@ class LLMDXKSChecks:
                 return_value = False
         self.logger.debug("All tested CRDs are present")
         return return_value
-    
-    def test_crd_certmanager(self):
-        required_crds = [
-            "certificaterequests.cert-manager.io",
-            "certificates.cert-manager.io",
-            "clusterissuers.cert-manager.io",
-            "issuers.cert-manager.io"
-        ]
-        if self._test_crds_present(required_crds):
-            self.logger.info("All required cert-manager CRDs are present")
-            return True
-        else:
-            self.logger.error("Missing cert-manager CRDs")
-            return False
 
     def test_crd_certmanager(self):
         required_crds = [
@@ -127,19 +118,35 @@ class LLMDXKSChecks:
             self.logger.error("Missing cert-manager CRDs")
             return False
 
+    def test_crd_sailoperator(self):
+        required_crds = [
+            "istiocnis.sailoperator.io",
+            "istiorevisions.sailoperator.io",
+            "istiorevisiontags.sailoperator.io",
+            "istios.sailoperator.io",
+            "ztunnels.sailoperator.io",
+        ]
+        if self._test_crds_present(required_crds):
+            self.logger.info("All required sail-operator CRDs are present")
+            return True
+        else:
+            self.logger.error("Missing sail-operator CRDs")
+            return False
 
     def test_gpu_availablity(self):
         def nvidia_driver_present(node):
             if "nvidia.com/gpu" in node.status.allocatable.keys():
-                if int(node.status.allocatable["nvidia.com/gpu"] ) > 0:
+                if int(node.status.allocatable["nvidia.com/gpu"]) > 0:
                     return True
                 else:
-                    self.logger.warning(f"No allocatabled NVIDIA GPUs on node {node.metadata.name} - no NVIDIA GPU drivers present")
+                    self.logger.warning(f"No allocatabled NVIDIA GPUs on node {node.metadata.name}\
+                         - no NVIDIA GPU drivers present")
                     return False
             else:
-                self.logger.warning(f"No NVIDIA GPU drivers present on node {node.metadata.name} - no NVIDIA GPU accelerators present")
+                self.logger.warning(f"No NVIDIA GPU drivers present on node {node.metadata.name}\
+                     - no NVIDIA GPU accelerators present")
                 return False
-        
+
         accelerators = {
             "nvidia": 0,
             "other": 0,
@@ -160,7 +167,6 @@ class LLMDXKSChecks:
         else:
             self.logger.info("At least one supported GPU driver found")
             return True
-            
 
     def test_instance_type(self):
         def azure_instance_type(self):
