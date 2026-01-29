@@ -112,7 +112,22 @@ class LLMDXKSChecks:
         else:
             self.logger.error("Missing cert-manager CRDs")
             return False
-   
+
+    def test_crd_certmanager(self):
+        required_crds = [
+            "certificaterequests.cert-manager.io",
+            "certificates.cert-manager.io",
+            "clusterissuers.cert-manager.io",
+            "issuers.cert-manager.io"
+        ]
+        if self._test_crds_present(required_crds):
+            self.logger.info("All required cert-manager CRDs are present")
+            return True
+        else:
+            self.logger.error("Missing cert-manager CRDs")
+            return False
+
+
     def test_gpu_availablity(self):
         def nvidia_driver_present(node):
             if "nvidia.com/gpu" in node.status.allocatable.keys():
