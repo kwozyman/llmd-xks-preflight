@@ -19,7 +19,7 @@ class LLMDXKSChecks:
 
         self.logger.debug(f"Log level: {self.log_level}")
         self.logger.debug(f"Arguments: {kwargs}")
-        self.logger.info("LLMDXKSChecks initialized")
+        self.logger.debug("LLMDXKSChecks initialized")
 
         self.k8s_core_api, self.k8s_ext_api = self._k8s_connection()
 
@@ -112,7 +112,7 @@ class LLMDXKSChecks:
         return_value = True
         for crd in required_crds:
             if crd not in all_crds:
-                self.logger.error(f"Missing CRD: {crd}")
+                self.logger.warning(f"Missing CRD: {crd}")
                 return_value = False
         self.logger.debug("All tested CRDs are present")
         return return_value
@@ -128,7 +128,7 @@ class LLMDXKSChecks:
             self.logger.info("All required cert-manager CRDs are present")
             return True
         else:
-            self.logger.error("Missing cert-manager CRDs")
+            self.logger.warning("Missing cert-manager CRDs")
             return False
 
     def test_crd_sailoperator(self):
@@ -143,7 +143,7 @@ class LLMDXKSChecks:
             self.logger.info("All required sail-operator CRDs are present")
             return True
         else:
-            self.logger.error("Missing sail-operator CRDs")
+            self.logger.warning("Missing sail-operator CRDs")
             return False
 
     def test_crd_lwsoperator(self):
@@ -154,7 +154,7 @@ class LLMDXKSChecks:
             self.logger.info("All required lws-operator CRDs are present")
             return True
         else:
-            self.logger.error("Missing lws-operator CRDs")
+            self.logger.warning("Missing lws-operator CRDs")
             return False
 
     def test_gpu_availablity(self):
@@ -186,7 +186,7 @@ class LLMDXKSChecks:
             else:
                 accelerators["other"] += 1
         if accelerators["other"] == len(nodes.items):
-            self.logger.error("No supported GPU drivers found")
+            self.logger.warning("No supported GPU drivers found")
             return False
         else:
             self.logger.info("At least one supported GPU driver found")
@@ -213,7 +213,7 @@ class LLMDXKSChecks:
                         pass
             max_instance_type = max(instance_types, key=instance_types.get)
             if instance_types[max_instance_type] == 0:
-                self.logger.error("No supported instance type found")
+                self.logger.warning("No supported instance type found")
                 return False
             else:
                 self.logger.info("At least one supported Azure instance type found")
@@ -223,7 +223,7 @@ class LLMDXKSChecks:
         if self.cloud_provider == "azure":
             return azure_instance_type(self)
         else:
-            self.logger.error("Unsupported cloud provider")
+            self.logger.warning("Unsupported cloud provider")
             return False
 
     def detect_cloud_provider(self):
