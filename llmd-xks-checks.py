@@ -67,7 +67,14 @@ class LLMDXKSChecks:
                 "suggested_action": "install sail-operator",
                 "result": False
             },
-
+            {
+                "name": "crd_lwsoperator",
+                "function": self.test_crd_lwsoperator,
+                "description": "test if the cluster has the lws-operator crds",
+                "suggested_action": "install lws-operator",
+                "result": False,
+                "optional": True
+            },
         ]
 
         self.run(self.tests)
@@ -137,6 +144,17 @@ class LLMDXKSChecks:
             return True
         else:
             self.logger.error("Missing sail-operator CRDs")
+            return False
+
+    def test_crd_lwsoperator(self):
+        required_crds = [
+            "leaderworkersets.leaderworkerset.x-k8s.io"
+        ]
+        if self._test_crds_present(required_crds):
+            self.logger.info("All required lws-operator CRDs are present")
+            return True
+        else:
+            self.logger.error("Missing lws-operator CRDs")
             return False
 
     def test_gpu_availablity(self):
@@ -237,8 +255,11 @@ class LLMDXKSChecks:
             if test["result"]:
                 print(f"Test {test['name']} PASSED")
             else:
-                print(f"Test {test['name']} FAILED")
-                print(f"    Suggested action: {test['suggested_action']}")
+                if "optional" in test.keys() and test["optional"]:
+                    print(f"Test {test['name']} OPTIONAL [failed]")
+                else:
+                    print(f"Test {test['name']} FAILED")
+                    print(f"    Suggested action: {test['suggested_action']}")
         return None
 
 
