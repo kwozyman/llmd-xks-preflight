@@ -3,6 +3,9 @@
 LLMD xKS preflight checks.
 """
 
+from multiprocessing import allow_connection_pickling
+import pprint
+import re
 import configargparse  # pyright: ignore[reportMissingImports]
 import sys
 import logging
@@ -21,9 +24,9 @@ class LLMDXKSChecks:
         self.logger.debug(f"Arguments: {kwargs}")
         self.logger.info("LLMDXKSChecks initialized")
 
-        self.k8s_api = self._k8s_connection()
+        self.k8s_core_api, self.k8s_ext_api = self._k8s_connection()
 
-        if self.k8s_api is None:
+        if self.k8s_core_api is None or self.k8s_ext_api is None:
             self.logger.error("Failed to connect to Kubernetes cluster")
             sys.exit(1)
 
@@ -51,6 +54,13 @@ class LLMDXKSChecks:
                 "suggested_action": "Provision a cluster with at least one supported GPU driver",
                 "result": False
             },
+            {
+                "name": "crd_certmanager",
+                "function": self.test_crd_certmanager,
+                "description": "Test if the cluster has the cert-manager CRDs",
+                "suggested_action": "Install cert-manager",
+                "result": False
+            }
         ]
 
         self.run(self.tests)
@@ -67,13 +77,42 @@ class LLMDXKSChecks:
     def _k8s_connection(self):
         try:
             kubernetes.config.load_kube_config()
-            api = kubernetes.client.CoreV1Api()
+            core_api = kubernetes.client.CoreV1Api()
+            ext_api = kubernetes.client.ApiextensionsV1Api()
         except Exception as e:
             self.logger.error(f"{e}")
             return None
         self.logger.info("Kubernetes connection established")
-        return api
+        return core_api, ext_api
 
+    def _get_all_crd_names(self):
+        crd_list = self.k8s_ext_api.list_custom_resource_definition()
+        return {crd.metadata.name for crd in crd_list.items}
+
+    def _test_crds_present(self, required_crds):
+        all_crds = self._get_all_crd_names()
+        return_value = True
+        for crd in required_crds:
+            if crd not in all_crds:
+                self.logger.error(f"Missing CRD: {crd}")
+                return_value = False
+        self.logger.debug("All tested CRDs are present")
+        return return_value
+    
+    def test_crd_certmanager(self):
+        required_crds = [
+            "certificaterequests.cert-manager.io",
+            "certificates.cert-manager.io",
+            "clusterissuers.cert-manager.io",
+            "issuers.cert-manager.io"
+        ]
+        if self._test_crds_present(required_crds):
+            self.logger.info("All required cert-manager CRDs are present")
+            return True
+        else:
+            self.logger.error("Missing cert-manager CRDs")
+            return False
+   
     def test_gpu_availablity(self):
         def nvidia_driver_present(node):
             if "nvidia.com/gpu" in node.status.allocatable.keys():
@@ -90,7 +129,7 @@ class LLMDXKSChecks:
             "nvidia": 0,
             "other": 0,
         }
-        nodes = self.k8s_api.list_node()
+        nodes = self.k8s_core_api.list_node()
         for node in nodes.items:
             labels = node.metadata.labels
             if "nvidia.com/gpu.present" in labels:
@@ -118,7 +157,7 @@ class LLMDXKSChecks:
                 "Standard_ND96isr_H200_v5": 0,
                 "Standard_NC4as_T4_v3": 0,
             }
-            nodes = self.k8s_api.list_node()
+            nodes = self.k8s_core_api.list_node()
             for node in nodes.items:
                 labels = node.metadata.labels
                 if "beta.kubernetes.io/instance-type" in labels:
@@ -148,7 +187,7 @@ class LLMDXKSChecks:
             "azure": 0,
             "aws": 0
         }
-        nodes = self.k8s_api.list_node()
+        nodes = self.k8s_core_api.list_node()
         for node in nodes.items:
             labels = node.metadata.labels
             if "kubernetes.azure.com/cluster" in labels:
