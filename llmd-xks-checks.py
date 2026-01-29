@@ -36,6 +36,8 @@ class LLMDXKSChecks:
         else:
             self.logger.info(f"Cloud provider specified: {self.cloud_provider}")
 
+        self.crds_cache = None
+
         self.tests = [
             {
                 "name": "instance_type",
@@ -90,8 +92,12 @@ class LLMDXKSChecks:
         self.logger.info("Kubernetes connection established")
         return core_api, ext_api
 
-    def _get_all_crd_names(self):
+    def _get_all_crd_names(self, cache=True):
+        if cache and self.crds_cache is not None:
+            return self.crds_cache
         crd_list = self.k8s_ext_api.list_custom_resource_definition()
+        if cache:
+            self.crds_cache = {crd.metadata.name for crd in crd_list.items}
         return {crd.metadata.name for crd in crd_list.items}
 
     def _test_crds_present(self, required_crds):
