@@ -2,7 +2,7 @@
 
 # Configurable settings
 MAX_LINE_LENGTH ?= 120
-CONTAINER_REPO ?= quay.io/kwozyman/llmd-xks-checks
+CONTAINER_REPO ?= localhost/llmd-xks-checks
 CONTAINER_TAG ?= latest
 CONTAINER_TOOL ?= podman
 HOST_KUBECONFIG ?= ~/.kube/config
